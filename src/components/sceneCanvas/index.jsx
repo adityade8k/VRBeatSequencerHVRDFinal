@@ -108,7 +108,7 @@ function SceneRoot() {
   // const blockRotation = [Math.PI/2, 0, 0];
   // const blockScale = 1
 
-  const blockPosition = [0, 0.6, -0.5];
+  const blockPosition = [0, 0.3, -0.5];
   const blockRotation = [0, 0, 0];
   const blockScale = 1
 
