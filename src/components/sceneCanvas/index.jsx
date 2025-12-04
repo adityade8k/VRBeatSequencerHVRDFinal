@@ -24,16 +24,20 @@ function SceneRoot() {
   return (
     <>
       <ambientLight intensity={1.5} />
-     
+
 
       <Keyboard
-        position={[0, 0, -0.5]}
-        rotation={[Math.PI/2, 0, 0]}
+        position={[0, 0.8, 0.5]}
+        rotation={[Math.PI / 2, 0, 0]}
         onKeyPressed={handleKeyPressed}
         onOctaveChange={handleOctaveChange}
       />
 
-      <Deck radius={0.45} height={0} sensitivity={2.0} />
+      <Deck
+        position={[0, 0.8, 0.5]}
+        radius={0.45} height={0}
+        sensitivity={2.0}
+      />
     </>
   );
 }
