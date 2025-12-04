@@ -28,19 +28,19 @@ function SceneRoot() {
 
 
       <Keyboard
-        position={[0, 0.8, 0.5]}
+        position={[0, 0.8, -0.7]}
         rotation={[Math.PI / 2, 0, 0]}
         onKeyPressed={handleKeyPressed}
         onOctaveChange={handleOctaveChange}
       />
 
       <Deck
-        position={[0, 0.8, 0.5]}
+        position={[0, 0.8, -0.5]}
         radius={0.45} height={0}
         sensitivity={2.0}
       />
 
-      <XRAxesDebug position={[0, 0.8, 0.5]} />
+      <XRAxesDebug position={[0, 0.8, -0.5]} />
       
     </>
   );
