@@ -29,14 +29,14 @@ function SceneRoot() {
       <ambientLight intensity={1.5} />
 
       <Keyboard
-        position={[0, 0, -0.5]}
+        position={[0, 0.8, -0.5]}
         rotation={[0, 0, 0]}
         onKeyPressed={handleKeyPressed}
         onOctaveChange={handleOctaveChange}
       />
 
       {/* Deck contains rotating panels and its own left/right buttons */}
-      <Deck rotation={[0, 0, 0]} position={[0, 0, -0.5]} radius={0.45} height={0} />
+      <Deck rotation={[0, 0, 0]} position={[0, 0.8, -0.5]} radius={0.45} height={0} />
     </>
   );
 }
