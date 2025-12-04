@@ -6,6 +6,7 @@ import BitmapTextProvider from '../bitmapText/bitmapTextProvider';
 import Keyboard from '../../packages/KeyBoard';
 import Deck from '../../packages/Deck';
 import { store } from '../xr/xrStore';
+import XRAxesDebug from '../../packages/XRAxesDebug';
 
 function SceneRoot() {
   const [octaveOffset, setOctaveOffset] = useState(0); // -2..+2 relative to baseOctave (C4–B4)
@@ -38,6 +39,9 @@ function SceneRoot() {
         radius={0.45} height={0}
         sensitivity={2.0}
       />
+
+      <XRAxesDebug position={[0, 0.8, 0.5]} />
+      
     </>
   );
 }
