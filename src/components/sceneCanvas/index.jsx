@@ -25,7 +25,7 @@ function SceneRoot() {
 
       {/* Single piano key, replacing PressablePlanesButton wrapper */}
       <PianoKey
-        position={[0, -0.2, 0.5]}
+        position={[0, 0.8, -0.7]}
         onPressed={handleKeyPress}
       />
     </>
@@ -36,7 +36,7 @@ export default function SceneCanvas() {
   return (
     <Canvas
       shadows
-      camera={{ position: [0, 0, 0.8], fov: 60 }}
+      camera={{ position: [0, 0, 0], fov: 60 }}
     >
       <color attach="background" args={['#050509']} />
       <XR store={store}>
