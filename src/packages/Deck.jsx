@@ -1,6 +1,9 @@
 // packages/Deck.jsx
-import { forwardRef, useRef } from 'react';
+
+import { forwardRef, useRef, useEffect } from 'react';
+import { useFrame } from '@react-three/fiber';
 import Button from '../components/Button';
+import AdsrPanel from './ADSRController';
 
 const Deck = forwardRef(function Deck(
   {
@@ -11,7 +14,19 @@ const Deck = forwardRef(function Deck(
 
     // deck layout
     radius = 0.45,
-    rotateStep = Math.PI / 3,
+    currentPanel = 0,
+    totalPanels = 3,
+    onPrevPanel,
+    onNextPanel,
+
+    // ADSR + presets
+    adsr,
+    onAdsrChange,
+    onAddInstrument,
+
+    // wave type
+    waveType,
+    onWaveTypeChange,
   },
   ref
 ) {
@@ -19,61 +34,90 @@ const Deck = forwardRef(function Deck(
   const rootRef = ref ?? localRef;
   const ringRef = useRef();
 
-  const rotateLeft = () => {
-    if (!ringRef.current) return;
-    ringRef.current.rotation.y += rotateStep;
-  };
+  const rotateStep = Math.PI / 3; // 60°
 
-  const rotateRight = () => {
+  const targetRotationRef = useRef(0);
+  useEffect(() => {
+    targetRotationRef.current = currentPanel * rotateStep;
+  }, [currentPanel]);
+
+  useFrame((_, delta) => {
     if (!ringRef.current) return;
-    ringRef.current.rotation.y -= rotateStep;
-  };
+    const current = ringRef.current.rotation.y;
+    const target = targetRotationRef.current;
+    const speed = 6;
+    const next = current + (target - current) * Math.min(1, speed * delta);
+    ringRef.current.rotation.y = next;
+  });
+
+  // 3 panels, 60° apart on XZ circle
+  const angles = [0, (2 * Math.PI) / 6, (4 * Math.PI) / 6];
+
+  const isFirst = currentPanel === 0;
+  const isLast = currentPanel === totalPanels - 1;
 
   return (
     <group ref={rootRef} position={position} rotation={rotation} scale={scale}>
-      {/* Rotating ring of panels (all positions relative to deck root) */}
+      {/* origin marker */}
+      {/* <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.03, 16, 16]} />
+        <meshStandardMaterial color="#ffffff" />
+      </mesh> */}
+
+      {/* rotating ring */}
       <group ref={ringRef}>
-        <mesh position={[0, 0, -radius]}>
-          <planeGeometry args={[0.35, 0.12]} />
-          <meshStandardMaterial color="#4f46e5" />
-        </mesh>
+        {angles.map((angle, idx) => {
+          const isActive = idx === currentPanel;
+          const baseOpacity = isActive ? 1 : 0; // only current panel visible
 
-        <mesh
-          position={[
-            radius * Math.cos((2 * Math.PI) / 3),
-            0,
-            -radius * Math.sin((2 * Math.PI) / 3),
-          ]}
-          rotation={[0, (2 * Math.PI) / 3, 0]}
-        >
-          <planeGeometry args={[0.35, 0.12]} />
-          <meshStandardMaterial color="#22c55e" />
-        </mesh>
-
-        <mesh
-          position={[
-            radius * Math.cos((-2 * Math.PI) / 3),
-            0,
-            -radius * Math.sin((-2 * Math.PI) / 3),
-          ]}
-          rotation={[0, (-2 * Math.PI) / 3, 0]}
-        >
-          <planeGeometry args={[0.35, 0.12]} />
-          <meshStandardMaterial color="#f97316" />
-        </mesh>
+          return (
+            <group
+              key={idx}
+              position={[
+                radius * Math.sin(angle),
+                -idx * 0.01,
+                -radius * Math.cos(angle),
+              ]}
+              rotation={[-Math.PI / 2, 0, idx * (-Math.PI / 3)]}
+            >
+              {idx === 0 ? (
+                // ADSR controller on first panel
+                <group visible={baseOpacity > 0}>
+                  <AdsrPanel
+                    adsr={adsr}
+                    onAdsrChange={onAdsrChange}
+                    onAdd={onAddInstrument}
+                    waveType={waveType}
+                    onWaveTypeChange={onWaveTypeChange}
+                  />
+                </group>
+              ) : (
+                // simple colored panels for others
+                <mesh>
+                  <planeGeometry args={[0.35, 0.12]} />
+                  <meshStandardMaterial
+                    color={idx === 1 ? '#22c55e' : '#f97316'}
+                    transparent
+                    opacity={baseOpacity}
+                  />
+                </mesh>
+              )}
+            </group>
+          );
+        })}
       </group>
 
-      {/* Stationary arrow buttons at the deck's origin */}
+      {/* navigation buttons */}
       <group position={[0, 0, 0]} rotation={[0, 0, 0]}>
         <Button
-          position={[0.22, 0, -0.0120]}
+          position={[0.22, 0, -0.012]}
           label="Prev Panel"
-          onPressed={rotateLeft}
+          onPressed={isFirst ? undefined : onPrevPanel}
         />
         <Button
-          position={[0.22, 0, -0.060]}
+          position={[0.22, 0, -0.06]}
           label="Next Panel"
-          onPressed={rotateRight}
+          onPressed={isLast ? undefined : onNextPanel}
         />
       </group>
     </group>

@@ -209,26 +209,27 @@ export default function Dial({
         {/* Value text (bottom) */}
         <BitmapText
           text={labelText}
-          position={[0.01, 0.001, -0.015]}
+          position={[-0.025, 0.001, 0.015]}
           rotation={[Math.PI / 2, 0, 0]}
           scale={[0.02, 0.02, 0.02]}
           color={labelTextColor}
-          align="center"
+          align="left"
           anchorY="middle"
           maxWidth={labelSize[0] / 0.02}
           quadWidth={1}
           quadHeight={1}
+          letterSpacing={-0.4}
         />
 
         {/* Name text (top), if provided */}
         {name && (
           <BitmapText
             text={name}
-            position={[-0.008, 0.001, 0.025]}      // opposite side on the plane
+            position={[-0.03, 0.001, -0.02]}      // opposite side on the plane
             rotation={[Math.PI / 2, 0, 0]}
             scale={[0.012, 0.012, 0.012]}
             color={labelTextColor}
-            align="center"
+            align="left"
             anchorY="middle"
             maxWidth={labelSize[0] / 0.018}
             quadWidth={1}
