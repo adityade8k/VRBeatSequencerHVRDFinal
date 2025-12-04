@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import BitmapText from './bitmapText'; // path to your BitmapText index.jsx [file:15]
 
 export default function PianoKey({
   // callbacks
@@ -9,20 +10,23 @@ export default function PianoKey({
   onPressDown,
   onPressUp,
   // transforms
-  position = [0, 1, -0.6],
-  rotation = [0, Math.PI/2, 0],
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
   scale = [1, 1, 1],
   // look & feel
-  length = 0.16,      // along X
-  width = 0.04,       // along Y
-  depth = 0.08,       // visual hint (Z)
-  hingeEnd = 'back',  // 'back' or 'front' visual orientation only
-  baseColor = '#222222',
-  keyColor = '#ffffff',
-  highlightColor = '#ffd400',
-  gap = 0.008,        // travel distance
+  length = 0.16,      // along Z
+  width = 0.04,       // along X
+  thickness = 0.01,
+  keyThickness = 0.005,
+  baseColor = '#fdb689',
+  keyColor = '#e35f6d',
+  highlightColor = '#fdae02',
+  gap = 0.002,
   speed = 14,
   activationThreshold = 0.9,
+  // label
+  label,
+  labelColor = '#000000',
 }) {
   const baseRef = useRef();
   const keyRef = useRef();
@@ -33,11 +37,9 @@ export default function PianoKey({
   const [armed, setArmed] = useState(false);
   const committedPressRef = useRef(false);
 
-  // initial & bottom positions along local Y
-  const initialY = useRef(gap);
-  const bottomY = useRef(0.0005);
+  const initialY = useRef(thickness * 0.5 + keyThickness * 0.5 + gap);
+  const bottomY = useRef(thickness * 0.5 + keyThickness * 0.5);
 
-  // colors
   const cKeyStart = useMemo(() => new THREE.Color(keyColor), [keyColor]);
   const cKeyTarget = useMemo(() => new THREE.Color(highlightColor), [highlightColor]);
   const cBaseDefault = useMemo(() => new THREE.Color(baseColor), [baseColor]);
@@ -102,9 +104,7 @@ export default function PianoKey({
   const handlePointerCancel = handlePointerUp;
   const handlePointerOut = handlePointerUp;
 
-  // hinge visual orientation (Z offset only visual)
-  const hingeSign = hingeEnd === 'back' ? -1 : 1;
-  const keyZOffset = (depth * 0.5 - 0.001) * hingeSign;
+  const labelYOffset = keyThickness * 0.5 + 0.001;
 
   return (
     <group
@@ -116,13 +116,9 @@ export default function PianoKey({
       onPointerOut={handlePointerOut}
       onPointerCancel={handlePointerCancel}
     >
-      {/* Base plate */}
-      <mesh
-        ref={baseRef}
-        rotation={[-Math.PI / 2, 0, 0]}
-        receiveShadow
-      >
-        <boxGeometry args={[length, width * 0.4, depth]} />
+      {/* Base on XZ */}
+      <mesh ref={baseRef} receiveShadow>
+        <boxGeometry args={[width, thickness, length]} />
         <meshStandardMaterial
           ref={baseMatRef}
           color={baseColor}
@@ -131,20 +127,30 @@ export default function PianoKey({
         />
       </mesh>
 
-      {/* Piano key – moves along local Y like a hinged plate */}
-      <mesh
-        ref={keyRef}
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, initialY.current, keyZOffset]}
-        castShadow
-      >
-        <boxGeometry args={[length * 0.95, width * 0.6, depth * 0.9]} />
+      {/* Moving key + label */}
+      <mesh ref={keyRef} castShadow>
+        <boxGeometry args={[width * 0.95, keyThickness, length * 0.95]} />
         <meshStandardMaterial
           ref={keyMatRef}
           color={keyColor}
           metalness={0.2}
           roughness={0.3}
         />
+
+        {label && (
+          <BitmapText
+            text={label}
+            position={[0, labelYOffset, labelYOffset*15]}   // just above the key top
+            rotation={[Math.PI/2, 0, 0]}        // face the camera like other UI text [file:15]
+            scale={[0.02, 0.02, 0.02]}        // adjust to fit key size
+            color={labelColor}
+            align="center"
+            anchorY="middle"
+            maxWidth={length * 0.9 / 0.02}    // roughly fit within key length
+            quadWidth={1}
+            quadHeight={1}
+          />
+        )}
       </mesh>
     </group>
   );

@@ -1,51 +1,54 @@
 // SceneCanvas.jsx
 import { Canvas } from '@react-three/fiber';
 import { XR } from '@react-three/xr';
-import { Suspense } from 'react';
-import * as THREE from 'three';
-
-import PianoKey from '../PianoKey';        // new component inspired by PressablePlanesButton [file:11]
-import { store } from '../xr/xrStore';          // uses CustomHand for both hands [file:12][file:13]
+import { Suspense, useState, useCallback } from 'react';
+import BitmapTextProvider from '../bitmapText/bitmapTextProvider';
+import Keyboard from '../../packages/KeyBoard';
+import Deck from '../../packages/Deck';
+import { store } from '../xr/xrStore';
 
 function SceneRoot() {
-  const handleKeyPress = () => {
-    console.log('Piano key pressed');
-  };
+  const [octaveOffset, setOctaveOffset] = useState(0); // -2..+2 relative to baseOctave (C4–B4)
+  const [lastNote, setLastNote] = useState(null);
+
+  const handleOctaveChange = useCallback((offset) => {
+    setOctaveOffset(offset);
+    console.log('Octave offset changed:', offset);
+  }, []);
+
+  const handleKeyPressed = useCallback((midi, label) => {
+    setLastNote({ midi, label, octaveOffset });
+    console.log(`Note played: ${label} (MIDI ${midi}), octaveOffset=${octaveOffset}`);
+  }, [octaveOffset]);
 
   return (
     <>
-      <ambientLight intensity={0.6} />
-      <directionalLight
-        position={[1.5, 2, 1]}
-        intensity={0.8}
-        castShadow
-        shadow-mapSize-width={1024}
-        shadow-mapSize-height={1024}
+      <ambientLight intensity={1.5} />
+     
+
+      <Keyboard
+        position={[0, 0, -0.5]}
+        rotation={[Math.PI/2, 0, 0]}
+        onKeyPressed={handleKeyPressed}
+        onOctaveChange={handleOctaveChange}
       />
 
-      {/* Single piano key, replacing PressablePlanesButton wrapper */}
-      <PianoKey
-        position={[0, 0.8, -0.7]}
-        onPressed={handleKeyPress}
-      />
+      <Deck radius={0.45} height={0} sensitivity={2.0} />
     </>
   );
 }
 
 export default function SceneCanvas() {
   return (
-    <Canvas
-      shadows
-      camera={{ position: [0, 0, 0], fov: 60 }}
-    >
-      <color attach="background" args={['#050509']} />
-      <XR store={store}>
-        {/* <Controllers /> */}
-        {/* <Hands /> CustomHand via xrStore [file:12][file:13] */}
-        <Suspense fallback={null}>
-          <SceneRoot />
-        </Suspense>
-      </XR>
+    <Canvas camera={{ position: [0, 0, 0], fov: 60 }}>
+      <BitmapTextProvider fontFamily='"futura-100", sans-serif' useMipmaps={false} toneMapped={false}>
+        <color attach="background" args={['#050509']} />
+        <XR store={store}>
+          <Suspense fallback={null}>
+            <SceneRoot />
+          </Suspense>
+        </XR>
+      </BitmapTextProvider>
     </Canvas>
   );
 }
