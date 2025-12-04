@@ -55,7 +55,7 @@ export default function AdsrPanel({
         value={sustain}
         min={0}
         max={1}
-        step={0.5}
+        step={0.05}
         onChange={(v) => onAdsrChange({ sustain: v })}
       />
 
@@ -86,8 +86,8 @@ export default function AdsrPanel({
         name="Gain"
         value={gain}
         min={0}
-        max={5}
-        step={0.1}
+        max={2}
+        step={0.05}
         onChange={(v) => onAdsrChange({ gain: v })}
       />
 
