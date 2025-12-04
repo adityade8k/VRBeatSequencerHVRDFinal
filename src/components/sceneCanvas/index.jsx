@@ -23,15 +23,6 @@ function SceneRoot() {
         shadow-mapSize-height={1024}
       />
 
-      <mesh
-        position={[0, 0.8, -0.6]}
-        rotation={[-Math.PI / 2, 0, 0]}
-        receiveShadow
-      >
-        <planeGeometry args={[1.2, 1.2]} />
-        <meshStandardMaterial color="#111111" roughness={0.9} metalness={0.1} />
-      </mesh>
-
       {/* Single piano key, replacing PressablePlanesButton wrapper */}
       <PianoKey
         position={[0, -0.2, 0.5]}
