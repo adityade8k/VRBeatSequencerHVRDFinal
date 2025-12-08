@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import Button from '../components/Button';
 import AdsrPanel from './ADSRController';
 import LoopSequencer from './LoopSequencer.jsx';
+import Composer from './Composer.jsx'; // ⬅️ new
 
 const Deck = forwardRef(function Deck(
   {
@@ -35,6 +36,12 @@ const Deck = forwardRef(function Deck(
     onPatternChange,
     onAddSequence,
     noteEvent,
+
+    composerLoops,
+    composerChannels,
+    onAssignLoopToChannel,
+    isCompositionPlaying,
+    onToggleCompositionPlay,
   },
   ref
 ) {
@@ -107,16 +114,17 @@ const Deck = forwardRef(function Deck(
                     noteEvent={noteEvent}
                   />
                 </group>
-              ) : (
-                <mesh>
-                  <planeGeometry args={[0.35, 0.12]} />
-                  <meshStandardMaterial
-                    color="#f97316"
-                    transparent
-                    opacity={baseOpacity}
+              ) : idx === 2 ? (
+                <group visible={baseOpacity > 0}>
+                  <Composer
+                    loops={composerLoops}
+                    channels={composerChannels}
+                    onAssignLoopToChannel={onAssignLoopToChannel}
+                    isPlaying={isCompositionPlaying}
+                    onTogglePlay={onToggleCompositionPlay}
                   />
-                </mesh>
-              )}
+                </group>
+              ) : null}
             </group>
           );
         })}

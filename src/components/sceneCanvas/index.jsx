@@ -8,6 +8,7 @@ import Deck from '../../packages/Deck';
 import { store } from '../xr/xrStore';
 import { useToneJS } from '../../hooks/useToneJS';
 import { useLooperTone } from '../../hooks/useLooperTone';
+import { useComposerTone } from '../../hooks/useComposerTone'; // 🆕
 import * as Tone from 'tone';
 
 function SceneRoot() {
@@ -29,8 +30,19 @@ function SceneRoot() {
   const [instruments, setInstruments] = useState([]);
   const [waveType, setWaveType] = useState('sine');
 
-  // store all added 8-step sequences here
-  const [sequences, setSequences] = useState([]);
+  // 🔁 All 8-step loops recorded from the Looper
+  const [loops, setLoops] = useState([]);
+
+  // 🎚️ 5 channels for the Composer, each holds a list of loops
+  const [channels, setChannels] = useState(() =>
+    Array.from({ length: 5 }, (_, i) => ({
+      id: `ch${i}`,
+      loops: [],
+    }))
+  );
+
+  // Global play/pause for the composer
+  const [isCompositionPlaying, setIsCompositionPlaying] = useState(false);
 
   // event object used to feed notes into the Looper
   const [looperNoteEvent, setLooperNoteEvent] = useState(null);
@@ -41,6 +53,7 @@ function SceneRoot() {
   });
 
   const { playLoop, stopLoop, setBpm: setLoopBpm } = useLooperTone();
+  const { playComposition, stopComposition } = useComposerTone(); // 🆕
 
   const [selectedInstrumentId, setSelectedInstrumentId] = useState(null);
 
@@ -50,19 +63,15 @@ function SceneRoot() {
 
   const handleKeyPressed = useCallback(
     (midi, label) => {
-      // Store what was pressed + current dial offset if you want it for UI
       setLastNote({ midi, label, octaveOffset });
 
-      // Keyboard already applied octaveOffset, so use midi directly
       const freq = Tone.Frequency(midi, 'midi').toFrequency();
-
-      // play immediate note
       playNote(freq);
 
       // send note event to Looper for recording, if active
       setLooperNoteEvent({
-        id: Date.now(), // ensures a new object even for same note
-        note: midi,     // ✅ NO extra octaveOffset here
+        id: Date.now(),
+        note: midi,
       });
     },
     [octaveOffset, playNote]
@@ -114,12 +123,15 @@ function SceneRoot() {
     setWaveType(inst.waveType || 'sine');
   }, []);
 
-  // When Looper hits "Add"
-  const handleAddSequence = useCallback((sequence) => {
-    // sequence is { notes: [...], bpm }
-    setSequences((prev) => [...prev, sequence]);
-    console.log('Sequences in SceneCanvas:', [...sequences, sequence]);
-  }, [sequences]);
+  // When Looper hits "Add": store as a named loop for the Composer
+  const handleAddSequence = useCallback(({ notes, bpm }) => {
+    setLoops((prev) => {
+      const id = `Loop ${prev.length + 1}`;
+      const loop = { id, notes: [...notes], bpm };
+      console.log('Added loop:', loop);
+      return [...prev, loop];
+    });
+  }, []);
 
   /**
    * This is called by Looper (via LoopSequencer -> Deck)
@@ -147,12 +159,49 @@ function SceneRoot() {
     [playLoop, stopLoop, setLoopBpm]
   );
 
-  // const blockPosition = [0, -0.1, -0.5];
-  // const blockRotation = [Math.PI / 2, 0, 0];
-  // const blockScale = 1;
+  // Assign a selected loop to a channel (called from Composer)
+  const handleAssignLoopToChannel = useCallback(
+    (channelIndex, loopId) => {
+      setChannels((prev) => {
+        const loopToAdd = loops.find((l) => l.id === loopId);
+        if (!loopToAdd) return prev;
 
-  const blockPosition = [0, 0.4, -0.5];
-  const blockRotation = [0, 0, 0];
+        return prev.map((ch, idx) => {
+          if (idx !== channelIndex) return ch;
+          return {
+            ...ch,
+            loops: [...(ch.loops || []), loopToAdd],
+          };
+        });
+      });
+    },
+    [loops]
+  );
+
+  // Play / pause the whole composition from Composer
+  const handleToggleCompositionPlay = useCallback(() => {
+    setIsCompositionPlaying((prev) => {
+      const next = !prev;
+
+      if (next) {
+        // only start if there is at least one loop in any channel
+        const hasContent = channels.some(
+          (ch) => ch.loops && ch.loops.length > 0
+        );
+        if (!hasContent) {
+          return prev; // keep as it was, nothing to play
+        }
+        playComposition(channels);
+      } else {
+        stopComposition();
+      }
+
+      return next;
+    });
+  }, [channels, playComposition, stopComposition]);
+
+  const blockPosition = [0, -0.1, 0];
+  const blockRotation = [Math.PI / 2, 0, 0];
   const blockScale = 1;
 
   return (
@@ -190,6 +239,12 @@ function SceneRoot() {
           onPatternChange={handlePatternChange}
           onAddSequence={handleAddSequence}
           noteEvent={looperNoteEvent}
+          // 🆕 Composer wiring
+          composerLoops={loops}
+          composerChannels={channels}
+          onAssignLoopToChannel={handleAssignLoopToChannel}
+          isCompositionPlaying={isCompositionPlaying}
+          onToggleCompositionPlay={handleToggleCompositionPlay}
         />
       </group>
     </>

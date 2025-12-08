@@ -30,10 +30,50 @@ export default function Looper({
   const [notes, setNotes] = useState(Array(8).fill(null));
   const [currentStep, setCurrentStep] = useState(0);
 
+  // Visual playhead index while loop is playing
+  const [activeStep, setActiveStep] = useState(null);
+  const playheadTimerRef = useRef(null);
+
   // Track last processed noteEvent.id so we don't re-record old events
   const lastNoteIdRef = useRef(null);
 
-  // --- CORE: record a single note into current step ---
+  // --- Playhead control ------------------------------------------------------
+
+  const stopPlayhead = useCallback(() => {
+    if (playheadTimerRef.current) {
+      clearInterval(playheadTimerRef.current);
+      playheadTimerRef.current = null;
+    }
+    setActiveStep(null);
+  }, []);
+
+  const startPlayhead = useCallback(
+    (bpmValue) => {
+      // Clear any existing timer
+      stopPlayhead();
+      if (!bpmValue || bpmValue <= 0) return;
+
+      // 8th note duration in ms: quarter = 60000 / bpm, so 8n = / 2
+      const stepMs = 30000 / bpmValue;
+
+      let step = 0;
+      setActiveStep(0);
+      playheadTimerRef.current = setInterval(() => {
+        step = (step + 1) % 8;
+        setActiveStep(step);
+      }, stepMs);
+    },
+    [stopPlayhead]
+  );
+
+  useEffect(() => {
+    return () => {
+      stopPlayhead();
+    };
+  }, [stopPlayhead]);
+
+  // --- CORE: record a single note into current step --------------------------
+
   const handleRecordNote = useCallback(
     (midi) => {
       if (!recording || currentStep >= 8) return;
@@ -69,8 +109,12 @@ export default function Looper({
     handleRecordNote(note);
   }, [noteEvent, recording, handleRecordNote]);
 
-  // --- Play / Pause ---
+  // --- Play / Pause ----------------------------------------------------------
+
   const handlePlayPause = useCallback(() => {
+    // If we start/stop playback, recording should be off
+    setRecording(false);
+
     setPlaying((prev) => {
       const next = !prev;
 
@@ -80,16 +124,20 @@ export default function Looper({
           notes: [...notes], // 8-step pattern, null = silence
           bpm,
         });
+        // start visual playhead
+        startPlayhead(bpm);
       } else {
         // going from playing -> stopped (pause)
         onPatternChange?.(null);
+        stopPlayhead();
       }
 
       return next;
     });
-  }, [notes, bpm, onPatternChange]);
+  }, [notes, bpm, onPatternChange, startPlayhead, stopPlayhead]);
 
-  // --- Record toggle ---
+  // --- Record toggle ---------------------------------------------------------
+
   const handleRecordToggle = useCallback(() => {
     setRecording((prev) => {
       const next = !prev;
@@ -108,13 +156,15 @@ export default function Looper({
     });
   }, [noteEvent]);
 
-  // --- Skip: move forward, leave silence (null) ---
+  // --- Skip: move forward, leave silence (null) ------------------------------
+
   const handleSkipNote = useCallback(() => {
     if (!recording || currentStep >= 8) return;
     setCurrentStep((prev) => Math.min(prev + 1, 8));
   }, [recording, currentStep]);
 
-  // --- Delete last: remove previous note, make that slot ready again ---
+  // --- Delete last: remove previous note, make that slot ready again ---------
+
   const handleDeleteLast = useCallback(() => {
     if (currentStep === 0) return;
 
@@ -127,21 +177,23 @@ export default function Looper({
     });
   }, [currentStep]);
 
-  // --- Delete all: clear and start recording from the beginning ---
+  // --- Delete all: clear and start recording from the beginning --------------
+
   const handleDeleteAll = useCallback(() => {
     setNotes(Array(8).fill(null));
     setCurrentStep(0);
     setRecording(true); // "sets the first to be recorded again"
     setPlaying(false);
+    stopPlayhead();
     onPatternChange?.(null); // ensure loop stops
-  }, [onPatternChange]);
+  }, [onPatternChange, stopPlayhead]);
 
-  // --- Add current sequence to SceneCanvas state + reset looper ---
+  // --- Add current sequence to SceneCanvas state + reset looper --------------
+
   const handleAddSequence = useCallback(() => {
     // Send current sequence up
     onAddSequence?.({
       notes: [...notes], // 8-step pattern, null = silence
-      bpm,
     });
 
     // Reset internal state so tiles are empty and slot 0 is ready
@@ -149,10 +201,12 @@ export default function Looper({
     setCurrentStep(0);
     setRecording(true); // first tile "armed" (yellow)
     setPlaying(false);
+    stopPlayhead();
     onPatternChange?.(null); // stop preview loop if it was playing
-  }, [notes, bpm, onAddSequence, onPatternChange]);
+  }, [notes, bpm, onAddSequence, onPatternChange, stopPlayhead]);
 
-  // --- BPM dial: update bpm and inform parent if currently playing ---
+  // --- BPM dial: update bpm and inform parent if currently playing -----------
+
   const handleBpmChange = useCallback(
     (value) => {
       setBpm(value);
@@ -162,9 +216,11 @@ export default function Looper({
           notes: [...notes],
           bpm: value,
         });
+        // restart playhead at new tempo
+        startPlayhead(value);
       }
     },
-    [playing, notes, onPatternChange]
+    [playing, notes, onPatternChange, startPlayhead]
   );
 
   return (
@@ -175,8 +231,25 @@ export default function Looper({
           const step = notes[i];
           const hasNote = !!step;
           const isCurrent = i === currentStep;
+          const isActive = playing && i === activeStep;
           const label = hasNote ? midiToLabel(step.midi) : '';
           const x = i * 0.035 - 0.07;
+
+          // Color priority:
+          // 1. active playhead (looping)
+          // 2. recorded note
+          // 3. current recording slot
+          // 4. base
+          let color;
+          if (isActive) {
+            color = 0xf97316; // orange for currently playing step
+          } else if (hasNote) {
+            color = 0x22c55e; // green if note recorded
+          } else if (isCurrent && recording) {
+            color = 0xfacc15; // yellow-ish for ready to record
+          } else {
+            color = 0xb4cafe; // base
+          }
 
           return (
             <group key={i} position={[x, 0, 0]}>
@@ -186,11 +259,7 @@ export default function Looper({
                 geometry={new THREE.BoxGeometry(1, 1, 1)}
                 material={
                   new THREE.MeshStandardMaterial({
-                    color: hasNote
-                      ? 0x22c55e // green if note recorded
-                      : isCurrent && recording
-                      ? 0xfacc15 // yellow-ish for ready to record
-                      : 0xb4cafe, // dark/silent
+                    color,
                     metalness: 0.2,
                     roughness: 0.4,
                   })
@@ -223,7 +292,8 @@ export default function Looper({
           position={[-0.13, 0, 0]}
           label={playing ? 'Pause' : 'Play'}
           onPressed={handlePlayPause}
-        /> <Button
+        />
+        <Button
           position={[-0.06, 0, 0]}
           label={recording ? 'Stop Rec' : 'Record'}
           onPressed={handleRecordToggle}
