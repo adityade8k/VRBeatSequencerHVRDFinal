@@ -23,7 +23,7 @@ export default function Button({
   highlightColor = '#facc15',
   gap = 0.002,
   speed = 14,
-  activationThreshold = 0.9,
+  activationThreshold = 0.5,
   // label
   label,
   labelColor = '#000000',

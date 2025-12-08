@@ -21,8 +21,8 @@ export default function AdsrPanel({
 
   const makeWaveButtonProps = (type) => ({
     onPressed: () => onWaveTypeChange?.(type),
-    baseColor: waveType === type ? '#22c55e' : '#fdb689', // active vs inactive
-    keyColor: waveType === type ? '#22c55e' : '#38bdf8',
+    baseColor: waveType === type ? '#a09bfe' : '#fdb689', // active vs inactive
+    keyColor: waveType === type ? '#a09bfe' : '#38bdf8',
   });
 
   return (

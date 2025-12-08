@@ -104,13 +104,13 @@ function SceneRoot() {
     });
   }, [currentAdsr, waveType]);
 
-  // const blockPosition = [0, -0.1, -0.5];
-  // const blockRotation = [Math.PI/2, 0, 0];
-  // const blockScale = 1
-
-  const blockPosition = [0, 0.6, -0.5];
-  const blockRotation = [0, 0, 0];
+  const blockPosition = [0, -0.1, -0.5];
+  const blockRotation = [Math.PI/2, 0, 0];
   const blockScale = 1
+
+  // const blockPosition = [0, 0.6, -0.5];
+  // const blockRotation = [0, 0, 0];
+  // const blockScale = 1
 
   return (
     <>
