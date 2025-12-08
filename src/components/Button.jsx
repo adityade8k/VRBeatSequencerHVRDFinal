@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import BitmapText from './bitmapText';
+import { useDisposable } from '../hooks/useDisposable';
 
 export default function Button({
   // callbacks
@@ -27,7 +28,7 @@ export default function Button({
   // label
   label,
   labelColor = '#000000',
-  letterSpacing= -0.4,
+  letterSpacing = -0.4,
   fontScale = 0.01
 }) {
   const baseRef = useRef();
@@ -45,6 +46,35 @@ export default function Button({
   const cKeyStart = useMemo(() => new THREE.Color(keyColor), [keyColor]);
   const cKeyTarget = useMemo(() => new THREE.Color(highlightColor), [highlightColor]);
   const cBaseDefault = useMemo(() => new THREE.Color(baseColor), [baseColor]);
+
+
+  const baseGeo = useDisposable(
+    () => new THREE.BoxGeometry(width, thickness, length),
+    [width, thickness, length]
+  );
+
+  const keyGeo = useDisposable(
+    () => new THREE.BoxGeometry(width * 0.95, keyThickness, length * 0.95),
+    [width, keyThickness, length]
+  );
+
+  const baseMat = useDisposable(
+    () => new THREE.MeshStandardMaterial({
+      color: baseColor,
+      metalness: 0.1,
+      roughness: 0.8,
+    }),
+    [baseColor]
+  );
+
+  const keyMat = useDisposable(
+    () => new THREE.MeshStandardMaterial({
+      color: keyColor,
+      metalness: 0.2,
+      roughness: 0.3,
+    }),
+    [keyColor]
+  );
 
   useEffect(() => {
     if (keyRef.current) {
@@ -119,7 +149,7 @@ export default function Button({
       onPointerCancel={handlePointerCancel}
     >
       {/* Base on XZ */}
-      <mesh ref={baseRef} receiveShadow>
+      <mesh ref={baseRef} receiveShadow geometry={baseGeo} material={baseMat} >
         <boxGeometry args={[width, thickness, length]} />
         <meshStandardMaterial
           ref={baseMatRef}
@@ -130,7 +160,7 @@ export default function Button({
       </mesh>
 
       {/* Moving key + label */}
-      <mesh ref={keyRef} castShadow>
+      <mesh ref={keyRef} castShadow geometry={keyGeo} material={keyMat}>
         <boxGeometry args={[width * 0.95, keyThickness, length * 0.95]} />
         <meshStandardMaterial
           ref={keyMatRef}
@@ -151,7 +181,7 @@ export default function Button({
             maxWidth={length * 0.9 / 0.02}
             quadWidth={1}
             quadHeight={1}
-            letterSpacing={letterSpacing}   
+            letterSpacing={letterSpacing}
             lineSpacing={2.0}
           />
         )}

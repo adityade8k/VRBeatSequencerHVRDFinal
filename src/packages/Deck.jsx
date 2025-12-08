@@ -1,9 +1,9 @@
 // packages/Deck.jsx
-
 import { forwardRef, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import Button from '../components/Button';
 import AdsrPanel from './ADSRController';
+import LoopSequencer from './LoopSequencer.jsx';
 
 const Deck = forwardRef(function Deck(
   {
@@ -27,6 +27,14 @@ const Deck = forwardRef(function Deck(
     // wave type
     waveType,
     onWaveTypeChange,
+
+    // loop sequencer props
+    instruments,
+    selectedInstrumentId,
+    onSelectInstrumentPreset,
+    onPatternChange,
+    onAddSequence,
+    noteEvent,
   },
   ref
 ) {
@@ -35,8 +43,8 @@ const Deck = forwardRef(function Deck(
   const ringRef = useRef();
 
   const rotateStep = Math.PI / 3; // 60°
-
   const targetRotationRef = useRef(0);
+
   useEffect(() => {
     targetRotationRef.current = currentPanel * rotateStep;
   }, [currentPanel]);
@@ -50,25 +58,23 @@ const Deck = forwardRef(function Deck(
     ringRef.current.rotation.y = next;
   });
 
-  // 3 panels, 60° apart on XZ circle
   const angles = [0, (2 * Math.PI) / 6, (4 * Math.PI) / 6];
-
   const isFirst = currentPanel === 0;
   const isLast = currentPanel === totalPanels - 1;
 
   return (
     <group ref={rootRef} position={position} rotation={rotation} scale={scale}>
       {/* origin marker */}
-      {/* <mesh position={[0, 0, 0]}>
+      <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[0.03, 16, 16]} />
         <meshStandardMaterial color="#ffffff" />
-      </mesh> */}
+      </mesh>
 
       {/* rotating ring */}
       <group ref={ringRef}>
         {angles.map((angle, idx) => {
           const isActive = idx === currentPanel;
-          const baseOpacity = isActive ? 1 : 0; // only current panel visible
+          const baseOpacity = isActive ? 1 : 0;
 
           return (
             <group
@@ -81,7 +87,6 @@ const Deck = forwardRef(function Deck(
               rotation={[-Math.PI / 2, 0, idx * (-Math.PI / 3)]}
             >
               {idx === 0 ? (
-                // ADSR controller on first panel
                 <group visible={baseOpacity > 0}>
                   <AdsrPanel
                     adsr={adsr}
@@ -91,12 +96,22 @@ const Deck = forwardRef(function Deck(
                     onWaveTypeChange={onWaveTypeChange}
                   />
                 </group>
+              ) : idx === 1 ? (
+                <group visible={baseOpacity > 0}>
+                  <LoopSequencer
+                    instruments={instruments}
+                    selectedInstrumentId={selectedInstrumentId}
+                    onSelectInstrumentPreset={onSelectInstrumentPreset}
+                    onAddSequence={onAddSequence}
+                    onPatternChange={onPatternChange}
+                    noteEvent={noteEvent}
+                  />
+                </group>
               ) : (
-                // simple colored panels for others
                 <mesh>
                   <planeGeometry args={[0.35, 0.12]} />
                   <meshStandardMaterial
-                    color={idx === 1 ? '#22c55e' : '#f97316'}
+                    color="#f97316"
                     transparent
                     opacity={baseOpacity}
                   />

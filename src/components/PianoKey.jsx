@@ -3,6 +3,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import BitmapText from './bitmapText'; // path to your BitmapText index.jsx [file:15]
+import { useDisposable } from '../hooks/useDisposable';
+
+// Disposable geometries
+
 
 export default function PianoKey({
   // callbacks
@@ -32,6 +36,35 @@ export default function PianoKey({
   const keyRef = useRef();
   const baseMatRef = useRef();
   const keyMatRef = useRef();
+
+  const baseGeo = useDisposable(
+    () => new THREE.BoxGeometry(width, thickness, length),
+    [width, thickness, length]
+  );
+
+  const keyGeo = useDisposable(
+    () => new THREE.BoxGeometry(width * 0.95, keyThickness, length * 0.95),
+    [width, keyThickness, length]
+  );
+
+  // Disposable materials
+  const baseMat = useDisposable(
+    () => new THREE.MeshStandardMaterial({
+      color: baseColor,
+      metalness: 0.1,
+      roughness: 0.8,
+    }),
+    [baseColor]
+  );
+
+  const keyMat = useDisposable(
+    () => new THREE.MeshStandardMaterial({
+      color: keyColor,
+      metalness: 0.2,
+      roughness: 0.3,
+    }),
+    [keyColor]
+  );
 
   const [isPressed, setIsPressed] = useState(false);
   const [armed, setArmed] = useState(false);
@@ -117,7 +150,7 @@ export default function PianoKey({
       onPointerCancel={handlePointerCancel}
     >
       {/* Base on XZ */}
-      <mesh ref={baseRef} receiveShadow>
+      <mesh ref={baseRef} receiveShadow geometry={baseGeo} material={baseMat}>
         <boxGeometry args={[width, thickness, length]} />
         <meshStandardMaterial
           ref={baseMatRef}
@@ -128,7 +161,7 @@ export default function PianoKey({
       </mesh>
 
       {/* Moving key + label */}
-      <mesh ref={keyRef} castShadow>
+      <mesh ref={keyRef} castShadow geometry={keyGeo} material={keyMat}>
         <boxGeometry args={[width * 0.95, keyThickness, length * 0.95]} />
         <meshStandardMaterial
           ref={keyMatRef}
@@ -140,8 +173,8 @@ export default function PianoKey({
         {label && (
           <BitmapText
             text={label}
-            position={[0, labelYOffset, labelYOffset*15]}   // just above the key top
-            rotation={[Math.PI/2, 0, 0]}        // face the camera like other UI text [file:15]
+            position={[0, labelYOffset, labelYOffset * 15]}   // just above the key top
+            rotation={[Math.PI / 2, 0, 0]}        // face the camera like other UI text [file:15]
             scale={[0.02, 0.02, 0.02]}        // adjust to fit key size
             color={labelColor}
             align="center"
