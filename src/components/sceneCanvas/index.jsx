@@ -384,7 +384,7 @@ function SceneRoot() {
 
 export default function SceneCanvas() {
   return (
-    <Canvas camera={{ position: [0, 0, 0.6], fov: 60 }}>
+    <Canvas camera={{ position: [0, 0, 0.6], fov: 60 }} gl={{ antialias: true }}>
       <BitmapTextProvider
         fontFamily='"futura-100", sans-serif'
         useMipmaps={false}
