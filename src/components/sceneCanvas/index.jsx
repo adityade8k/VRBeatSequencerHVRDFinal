@@ -311,7 +311,7 @@ function SceneRoot() {
     handleCompositionStep,
   ]);
 
-  const blockPosition = [0, -0.2, 0];
+  const blockPosition = [0, 0.5, 0.5];
   const blockRotation = [0, 0, 0];
   const blockScale = 1;
 
@@ -384,7 +384,7 @@ function SceneRoot() {
 
 export default function SceneCanvas() {
   return (
-    <Canvas camera={{ position: [0, 0, 0.6], fov: 60 }}>
+    <Canvas camera={{ position: [0, 0.5, 0], fov: 60 }}>
       <BitmapTextProvider
         fontFamily='"futura-100", sans-serif'
         useMipmaps={false}
