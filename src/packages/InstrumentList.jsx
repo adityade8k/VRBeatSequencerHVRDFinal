@@ -61,7 +61,7 @@ export default function InstrumentList({
   const plateMat = useDisposable(
     () =>
       new THREE.MeshStandardMaterial({
-        color: '#e5e7eb',
+        color: 'rgba(188, 193, 250, 1)',
         roughness: 0.9,
         metalness: 0.0,
       }),
@@ -128,8 +128,8 @@ export default function InstrumentList({
                 label={inst.id}
                 length={0.02}
                 width={0.08}
-                baseColor={isSelected ? '#facc15' : '#fdb689'}
-                keyColor={isSelected ? '#f97316' : '#38bdf8'}
+                baseColor={isSelected ? '#a09bfe' : '#fdb689'}
+                keyColor={isSelected ? '#a09bfe' : '#38bdf8'}
                 position={[0, 0, 0]}
                 onPressed={() => onSelectInstrument?.(inst)}
               />

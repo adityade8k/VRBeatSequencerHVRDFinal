@@ -28,11 +28,11 @@ export default function LoopSequencer({
 
   return (
     <group position={position} rotation={rotation} scale={scale}>
-      {/* background panel */}
+  
       
 
       {/* left: instrument list */}
-      <group position={[-0.13, 0, 0.001]}>
+      <group position={[-0.16, 0, 0.001]}>
         <InstrumentList
           position={[0, -0.005, 0]}
           instruments={instruments}
@@ -42,7 +42,7 @@ export default function LoopSequencer({
       </group>
 
       {/* right: looper */}
-      <group position={[0.09, 0, 0.001]}>
+      <group position={[0.075, 0, 0.001]}>
         <Looper
           onAddSequence={onAddSequence}
           onPatternChange={onPatternChange}

@@ -164,7 +164,7 @@ function SceneRoot() {
   // `notes` already carry per-step instrument snapshots from Looper
   const handleAddSequence = useCallback(({ notes, bpm: loopBpm }) => {
     setLoops((prev) => {
-      const id = `Loop ${prev.length + 1}`;
+      const id = `Loop${prev.length + 1}`;
       const loop = { id, notes: [...notes], bpm: loopBpm };
       console.log('Added loop:', loop);
       return [...prev, loop];
@@ -311,8 +311,8 @@ function SceneRoot() {
     handleCompositionStep,
   ]);
 
-  const blockPosition = [0, -0.2, -0.5];
-  const blockRotation = [Math.PI / 2, 0, 0];
+  const blockPosition = [0, -0.2, 0];
+  const blockRotation = [0, 0, 0];
   const blockScale = 1;
 
   return (
@@ -332,9 +332,9 @@ function SceneRoot() {
         />
 
         <Deck
-          position={[0, -0.015, 0]}
-          rotation={[0, 0, 0]}
-          radius={0.15}
+          position={[0, -0.02, 0]}
+          rotation={[0.4, 0, 0]}
+          radius={0.14}
           currentPanel={currentPanel}
           onPrevPanel={handlePrevPanel}
           onNextPanel={handleNextPanel}
@@ -366,9 +366,9 @@ function SceneRoot() {
         />
 
         <Visualizer
-          position={[0, 0, -0.35]}
-          rotation={[-1.2, 0, 0]}
-          scale={[1, 1, 1]}
+          position={[0, 0.24, -0.2]}
+          rotation={[0, 0, 0]}
+          scale={[1.5, 1.5, 1.5]}
           channels={channels}
           loops={loops}
           viewSlotIndex={viewSlotIndex}

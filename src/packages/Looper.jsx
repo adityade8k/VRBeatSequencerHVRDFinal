@@ -266,13 +266,13 @@ export default function Looper({
           // 4. base
           let color;
           if (isActive) {
-            color = 0xf97316; // orange for currently playing step
+            color = 0xe35f6d; // orange for currently playing step
           } else if (hasNote) {
-            color = 0x22c55e; // green if note recorded
+            color = 0x9e9cfe; // green if note recorded
           } else if (isCurrent && recording) {
             color = 0xfacc15; // yellow-ish for ready to record
           } else {
-            color = 0xb4cafe; // base
+            color = 0x38bdf8 // base
           }
 
           return (
@@ -330,7 +330,7 @@ export default function Looper({
 
       {/* BPM Dial */}
       <Dial
-        position={[0.17, -0.06, 0.049]}
+        position={[0.16, 0.0, 0.035]}
         scale={[0.7, 0.7, 0.7]}
         name="BPM"
         min={40}

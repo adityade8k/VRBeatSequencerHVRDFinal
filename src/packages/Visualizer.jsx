@@ -138,7 +138,7 @@ export default function Visualizer({
                 } else if (isSelectedWhileStopped) {
                   slotColor = '#facc15'; // yellow: selected via dial while stopped
                 } else {
-                  slotColor = hasLoop ? '#bfdbfe' : '#e5e7eb';
+                  slotColor = hasLoop ? '#38bdf8' : '#9e9cfe';
                 }
 
                 return (

@@ -26,7 +26,7 @@ export default function AdsrPanel({
   });
 
   return (
-    <group>
+    <group scale={[0.8, 0.8, 0.8]}>
       {/* top row of dials */}
       <Dial
         position={[-0.12+0.01, 0.12, 0]}

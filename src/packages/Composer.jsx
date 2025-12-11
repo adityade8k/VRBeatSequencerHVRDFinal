@@ -37,7 +37,7 @@ export default function Composer({
   onViewSlotChange,
   onViewChannelChange,
 
-  // 🔥 Controlled values from parent (SceneRoot)
+  // Controlled values from parent (SceneRoot)
   selectedSlotIndex: controlledSlotIndex,
   selectedChannelIndex: controlledChannelIndex,
 }) {
@@ -71,7 +71,9 @@ export default function Composer({
       ? controlledSlotIndex
       : localSlotIndex;
 
-  const [panelWidth, panelHeight] = [0.35, 0.12];
+  // Panel sizes for back plates
+  const LEFT_PANEL_SIZE = { width: 0.14, height: 0.12 };
+  const RIGHT_PANEL_SIZE = { width: 0.17, height: 0.12 };
 
   const currentSlotLoop = getSlotLoop(
     channels,
@@ -182,11 +184,20 @@ export default function Composer({
 
   return (
     <group position={position} rotation={rotation} scale={scale}>
-      {/* Left: Loops list */}
-      <group position={[-0.13, 0, 0.001]}>
+      {/* ================= LEFT PANEL: Loops list + scroll buttons ================= */}
+      <group position={[-0.1, 0, 0]}>
+        {/* Back plate */}
+        <mesh position={[-0.01, 0.0005, -0.01]} rotation={[Math.PI/2, Math.PI, 0]}>
+          <planeGeometry
+            args={[LEFT_PANEL_SIZE.width, LEFT_PANEL_SIZE.height]}
+          />
+          <meshStandardMaterial color="rgba(188, 193, 250, 1)" metalness={0} roughness={1} />
+        </mesh>
+
+        {/* Title */}
         <BitmapText
           text="LOOPS"
-          position={[-0.07, 0.002, -0.04]}
+          position={[-0.07, 0.002, -0.055]}
           rotation={[Math.PI / 2, 0, 0]}
           scale={[0.009, 0.009, 0.009]}
           color="#000000"
@@ -198,9 +209,10 @@ export default function Composer({
           letterSpacing={-0.2}
         />
 
-        <group position={[-0.02, 0.001, -0.025]}>
-          {/* Scroll buttons */}
-          <group position={[0.055, 0.0, -0.028]}>
+        {/* Content: scroll buttons + list */}
+        <group position={[-0.028, 0.0015, -0.033]}>
+          {/* Scroll buttons (up / down) */}
+          <group position={[0.06, 0.0, -0.007]}>
             <Button
               scale={[0.7, 0.7, 0.7]}
               label="up"
@@ -210,7 +222,7 @@ export default function Composer({
             />
           </group>
 
-          <group position={[0.055, 0.0, 0.043]}>
+          <group position={[0.06, 0.0, 0.065]}>
             <Button
               scale={[0.7, 0.7, 0.7]}
               label="down"
@@ -247,8 +259,8 @@ export default function Composer({
                       label={loop.id}
                       length={0.02}
                       width={0.08}
-                      baseColor={isSelected ? '#facc15' : '#fdb689'}
-                      keyColor={isSelected ? '#f97316' : '#38bdf8'}
+                      baseColor={isSelected ? '#a09bfe' : '#fdb689'}
+                      keyColor={isSelected ? '#a09bfe' : '#38bdf8'}
                       onPressed={() => handlePlaceLoopFromList(loop)}
                     />
                   </group>
@@ -259,13 +271,15 @@ export default function Composer({
         </group>
       </group>
 
-      {/* Right: Channel/Slot dials + Play/Delete */}
-      <group position={[0.09, 0, 0.001]}>
-        <group position={[0, 0.001, -0.015]}>
+      {/* ================= RIGHT PANEL: Dials + Play/Delete ================= */}
+      <group position={[0.09, 0, 0]}>
+
+        {/* Dials */}
+        <group position={[0, 0.0015, -0.01]}>
           {/* Channel Dial */}
           <group position={[-0.06, 0, 0]}>
             <Dial
-              name="CH"
+              name="CHANEL"
               position={[0, 0, 0]}
               min={0}
               max={maxChannelIndex}
@@ -274,23 +288,10 @@ export default function Composer({
               onChange={handleChannelDialChange}
               scale={[0.6, 0.6, 0.6]}
             />
-            <BitmapText
-              text={`Ch: ${effectiveChannelIndex + 1}`}
-              position={[0, 0.002, 0.03]}
-              rotation={[Math.PI / 2, 0, 0]}
-              scale={[0.007, 0.007, 0.007]}
-              color="#000000"
-              align="center"
-              anchorY="middle"
-              maxWidth={0.15 / 0.007}
-              quadWidth={1}
-              quadHeight={1}
-              letterSpacing={-0.2}
-            />
           </group>
 
           {/* Slot Dial */}
-          <group position={[0.04, 0, 0]}>
+          <group position={[0., 0, 0]}>
             <Dial
               name="SLOT"
               position={[0, 0, 0]}
@@ -301,37 +302,11 @@ export default function Composer({
               onChange={handleSlotDialChange}
               scale={[0.6, 0.6, 0.6]}
             />
-            <BitmapText
-              text={`Slot: ${effectiveSlotIndex + 1}`}
-              position={[0, 0.002, 0.03]}
-              rotation={[Math.PI / 2, 0, 0]}
-              scale={[0.007, 0.007, 0.007]}
-              color="#000000"
-              align="center"
-              anchorY="middle"
-              maxWidth={0.15 / 0.007}
-              quadWidth={1}
-              quadHeight={1}
-              letterSpacing={-0.2}
-            />
           </group>
         </group>
 
-        <BitmapText
-          text={currentSlotLoop ? 'Has loop' : 'Empty'}
-          position={[-0.07, 0.002, 0.02]}
-          rotation={[Math.PI / 2, 0, 0]}
-          scale={[0.007, 0.007, 0.007]}
-          color={currentSlotLoop ? '#16a34a' : '#000000'}
-          align="left"
-          anchorY="middle"
-          maxWidth={0.18 / 0.007}
-          quadWidth={1}
-          quadHeight={1}
-          letterSpacing={-0.2}
-        />
-
-        <group position={[0.03, 0.001, 0.045]}>
+        {/* Play / Delete buttons */}
+        <group position={[0.015, 0.0015, 0.04]}>
           <Button
             position={[-0.04, 0, 0]}
             label={isPlaying ? 'Pause' : 'Play'}

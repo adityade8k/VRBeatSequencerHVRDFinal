@@ -83,11 +83,6 @@ const Deck = forwardRef(function Deck(
 
   return (
     <group ref={rootRef} position={position} rotation={rotation} scale={scale}>
-      {/* origin marker */}
-      <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[0.03, 16, 16]} />
-        <meshStandardMaterial color="#ffffff" />
-      </mesh>
 
       {/* rotating ring */}
       <group ref={ringRef}>

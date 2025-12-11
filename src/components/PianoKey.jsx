@@ -23,7 +23,7 @@ export default function PianoKey({
   thickness = 0.01,
   keyThickness = 0.005,
   baseColor = '#fdb689',
-  keyColor = '#e35f6d',
+  keyColor = 'rgba(255, 121, 135, 1)',
   highlightColor = '#fdae02',
   gap = 0.002,
   speed = 14,
