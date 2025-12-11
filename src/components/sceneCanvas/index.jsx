@@ -311,7 +311,7 @@ function SceneRoot() {
     handleCompositionStep,
   ]);
 
-  const blockPosition = [0, 0.5, -0.5];
+  const blockPosition = [0, 0.7, -0.5];
   const blockRotation = [0, 0, 0];
   const blockScale = 1;
 

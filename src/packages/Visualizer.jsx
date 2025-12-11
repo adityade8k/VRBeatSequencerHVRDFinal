@@ -73,7 +73,7 @@ export default function Visualizer({
     <group position={position} rotation={rotation} scale={scale}>
       {/* Needle (fixed) */}
       <group>
-        <mesh position={[0, 0.002, -(totalHeight * 0.25)]}>
+        <mesh position={[0, 0.00002, -(totalHeight * 0.25)]}>
           <planeGeometry args={[0.003, totalHeight]} />
           <meshStandardMaterial color="#f97373" />
         </mesh>
