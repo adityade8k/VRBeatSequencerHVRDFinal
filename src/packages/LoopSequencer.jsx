@@ -14,6 +14,10 @@ export default function LoopSequencer({
   onAddSequence,
   onPatternChange,
   noteEvent,
+
+  // NEW
+  bpm,
+  onBpmChange,
 }) {
   const [panelWidth, panelHeight] = [0.35, 0.12];
 
@@ -35,8 +39,8 @@ export default function LoopSequencer({
         <InstrumentList
           position={[0, -0.005, 0]}
           instruments={instruments}
-          selectedId={selectedInstrumentId}           // 🔧 fix prop name
-          onSelectInstrument={onSelectInstrumentPreset} // 🔧 map to your handler
+          selectedId={selectedInstrumentId}
+          onSelectInstrument={onSelectInstrumentPreset}
         />
       </group>
 
@@ -46,7 +50,9 @@ export default function LoopSequencer({
           onAddSequence={onAddSequence}
           onPatternChange={onPatternChange}
           noteEvent={noteEvent}
-          selectedInstrument={selectedInstrument} // 🔧 pass snapshot into Looper
+          selectedInstrument={selectedInstrument}
+          bpm={bpm}
+          onBpmChange={onBpmChange}
         />
       </group>
     </group>

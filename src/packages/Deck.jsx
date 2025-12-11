@@ -4,7 +4,7 @@ import { useFrame } from '@react-three/fiber';
 import Button from '../components/Button';
 import AdsrPanel from './ADSRController';
 import LoopSequencer from './LoopSequencer.jsx';
-import Composer from './Composer.jsx'; // ⬅️ new
+import Composer from './Composer.jsx';
 
 const Deck = forwardRef(function Deck(
   {
@@ -37,9 +37,15 @@ const Deck = forwardRef(function Deck(
     onAddSequence,
     noteEvent,
 
+    // NEW: global BPM (SceneRoot owns it)
+    bpm,
+    onBpmChange,
+
+    // composer props
     composerLoops,
     composerChannels,
-    onAssignLoopToChannel,
+    onPlaceLoopAtSlot,     // (channelIndex, slotIndex, loopId) => void
+    onDeleteBlockAtSlot,   // (channelIndex, slotIndex) => void
     isCompositionPlaying,
     onToggleCompositionPlay,
   },
@@ -112,6 +118,8 @@ const Deck = forwardRef(function Deck(
                     onAddSequence={onAddSequence}
                     onPatternChange={onPatternChange}
                     noteEvent={noteEvent}
+                    bpm={bpm}
+                    onBpmChange={onBpmChange}
                   />
                 </group>
               ) : idx === 2 ? (
@@ -119,7 +127,8 @@ const Deck = forwardRef(function Deck(
                   <Composer
                     loops={composerLoops}
                     channels={composerChannels}
-                    onAssignLoopToChannel={onAssignLoopToChannel}
+                    onPlaceLoopAtSlot={onPlaceLoopAtSlot}
+                    onDeleteBlockAtSlot={onDeleteBlockAtSlot}
                     isPlaying={isCompositionPlaying}
                     onTogglePlay={onToggleCompositionPlay}
                   />

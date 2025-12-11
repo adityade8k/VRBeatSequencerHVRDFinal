@@ -19,12 +19,28 @@ function midiToLabel(midi) {
 export default function Looper({
   onAddSequence,
   onPatternChange,
-  noteEvent,          // { id, note } from SceneCanvas when a key is played
-  selectedInstrument, // snapshot of current instrument
+  noteEvent,           // { id, note } from SceneCanvas when a key is played
+  selectedInstrument,  // snapshot of current instrument
+
+  // NEW: optional controlled BPM from SceneRoot
+  bpm: externalBpm,    // number | undefined
+  onBpmChange,         // (value: number) => void
 }) {
   const [recording, setRecording] = useState(false);
   const [playing, setPlaying] = useState(false);
-  const [bpm, setBpm] = useState(86);
+
+  // Internal BPM state (used if externalBpm is not provided)
+  const [localBpm, setLocalBpm] = useState(externalBpm ?? 86);
+
+  // Sync internal with external if parent controls it
+  useEffect(() => {
+    if (typeof externalBpm === 'number') {
+      setLocalBpm(externalBpm);
+    }
+  }, [externalBpm]);
+
+  const effectiveBpm =
+    typeof externalBpm === 'number' ? externalBpm : localBpm;
 
   // Each step: null (silence) or { midi, instrument }
   const [notes, setNotes] = useState(Array(8).fill(null));
@@ -80,6 +96,7 @@ export default function Looper({
 
       const stepPayload = {
         midi,
+        // IMPORTANT: snapshot the instrument at record time
         instrument: selectedInstrument ? { ...selectedInstrument } : null,
       };
 
@@ -122,10 +139,10 @@ export default function Looper({
         // going from stopped -> playing
         onPatternChange?.({
           notes: [...notes], // 8-step pattern, null = silence
-          bpm,
+          bpm: effectiveBpm,
         });
         // start visual playhead
-        startPlayhead(bpm);
+        startPlayhead(effectiveBpm);
       } else {
         // going from playing -> stopped (pause)
         onPatternChange?.(null);
@@ -134,7 +151,7 @@ export default function Looper({
 
       return next;
     });
-  }, [notes, bpm, onPatternChange, startPlayhead, stopPlayhead]);
+  }, [notes, effectiveBpm, onPatternChange, startPlayhead, stopPlayhead]);
 
   // --- Record toggle ---------------------------------------------------------
 
@@ -191,9 +208,10 @@ export default function Looper({
   // --- Add current sequence to SceneCanvas state + reset looper --------------
 
   const handleAddSequence = useCallback(() => {
-    // Send current sequence up
+    // Send current sequence up, including BPM at recording time
     onAddSequence?.({
       notes: [...notes], // 8-step pattern, null = silence
+      bpm: effectiveBpm,
     });
 
     // Reset internal state so tiles are empty and slot 0 is ready
@@ -203,13 +221,19 @@ export default function Looper({
     setPlaying(false);
     stopPlayhead();
     onPatternChange?.(null); // stop preview loop if it was playing
-  }, [notes, bpm, onAddSequence, onPatternChange, stopPlayhead]);
+  }, [notes, effectiveBpm, onAddSequence, onPatternChange, stopPlayhead]);
 
   // --- BPM dial: update bpm and inform parent if currently playing -----------
 
-  const handleBpmChange = useCallback(
+  const handleBpmDialChange = useCallback(
     (value) => {
-      setBpm(value);
+      // if parent controls BPM, notify it; otherwise keep local
+      if (typeof onBpmChange === 'function') {
+        onBpmChange(value);
+      } else {
+        setLocalBpm(value);
+      }
+
       // live-update playing loop to new preview BPM
       if (playing && onPatternChange) {
         onPatternChange({
@@ -220,7 +244,7 @@ export default function Looper({
         startPlayhead(value);
       }
     },
-    [playing, notes, onPatternChange, startPlayhead]
+    [playing, notes, onPatternChange, startPlayhead, onBpmChange]
   );
 
   return (
@@ -309,11 +333,11 @@ export default function Looper({
         position={[0.17, -0.06, 0.049]}
         scale={[0.7, 0.7, 0.7]}
         name="BPM"
-        min={86}
-        max={200}
+        min={40}
+        max={220}
         step={1}
-        controlledValue={bpm}
-        onChange={handleBpmChange}
+        controlledValue={effectiveBpm}
+        onChange={handleBpmDialChange}
       />
     </group>
   );

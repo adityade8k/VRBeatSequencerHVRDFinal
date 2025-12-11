@@ -57,15 +57,17 @@ export function useComposerTone() {
    *   { id, loops: [ { id, notes: [...8], bpm }, ... ] },
    *   ...
    * ]
-   * 
+   *
    * - All channels step in lock-step.
    * - Each loop is 8 steps.
    * - If a channel has fewer total steps than the longest one, it's silent
    *   after its last note.
    * - After "last note in longest channel" => globalStep wraps to 0 (loop back).
+   *
+   * bpmFromRoot: the GLOBAL bpm from SceneRoot — single source of truth.
    */
   const playComposition = useCallback(
-    (channels) => {
+    (channels, bpmFromRoot = 86) => {
       const transport = transportRef.current;
       if (!Array.isArray(channels) || channels.length === 0) return;
 
@@ -78,18 +80,13 @@ export function useComposerTone() {
 
       transport.cancel(0);
 
-      // Determine global BPM from the first loop that has bpm, else default 86
-      let bpm = 86;
-      outer: for (const ch of channels) {
-        const loops = ch?.loops || [];
-        for (const loop of loops) {
-          if (loop && typeof loop.bpm === 'number') {
-            bpm = loop.bpm;
-            break outer;
-          }
-        }
-      }
-      transport.bpm.rampTo(bpm, 0.01);
+      // 👉 IMPORTANT: use the BPM given by SceneRoot, NOT the loops.
+      const effectiveBpm =
+        typeof bpmFromRoot === 'number' && !Number.isNaN(bpmFromRoot)
+          ? bpmFromRoot
+          : 86;
+
+      transport.bpm.rampTo(effectiveBpm, 0.01);
 
       // Precompute per-channel metadata & longest channel length in steps
       let longestSteps = 0;

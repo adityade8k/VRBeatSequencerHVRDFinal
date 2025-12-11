@@ -1,14 +1,14 @@
-// SceneCanvas.jsx (this is your src/.../index.jsx file)
+// SceneCanvas.jsx (src/.../index.jsx)
 import { Canvas } from '@react-three/fiber';
 import { XR } from '@react-three/xr';
-import { Suspense, useState, useCallback } from 'react';
+import { Suspense, useState, useCallback, useEffect } from 'react';
 import BitmapTextProvider from '../bitmapText/bitmapTextProvider';
 import Keyboard from '../../packages/KeyBoard';
 import Deck from '../../packages/Deck';
 import { store } from '../xr/xrStore';
 import { useToneJS } from '../../hooks/useToneJS';
 import { useLooperTone } from '../../hooks/useLooperTone';
-import { useComposerTone } from '../../hooks/useComposerTone'; // 🆕
+import { useComposerTone } from '../../hooks/useComposerTone';
 import * as Tone from 'tone';
 
 function SceneRoot() {
@@ -33,7 +33,11 @@ function SceneRoot() {
   // 🔁 All 8-step loops recorded from the Looper
   const [loops, setLoops] = useState([]);
 
-  // 🎚️ 5 channels for the Composer, each holds a list of loops
+  // 🎚️ 5 channels for the Composer, each holds an array of "slots"
+  // Each slot will be either:
+  //   null
+  //   { loopId }       (reference to a loop in `loops`)
+  //   or a full loop object { id, notes, bpm } (old behavior still works)
   const [channels, setChannels] = useState(() =>
     Array.from({ length: 5 }, (_, i) => ({
       id: `ch${i}`,
@@ -47,15 +51,24 @@ function SceneRoot() {
   // event object used to feed notes into the Looper
   const [looperNoteEvent, setLooperNoteEvent] = useState(null);
 
+  // 🔁 Global BPM (shared by Looper + Composition)
+  const [bpm, setBpm] = useState(86);
+
   const { playNote } = useToneJS({
     waveType,
     adsr: currentAdsr,
   });
 
   const { playLoop, stopLoop, setBpm: setLoopBpm } = useLooperTone();
-  const { playComposition, stopComposition } = useComposerTone(); // 🆕
+  const { playComposition, stopComposition } = useComposerTone();
 
   const [selectedInstrumentId, setSelectedInstrumentId] = useState(null);
+
+  // Keep Tone.Transport + looper engine in sync with global BPM
+  useEffect(() => {
+    Tone.Transport.bpm.value = bpm;
+    setLoopBpm(bpm);
+  }, [bpm, setLoopBpm]);
 
   const handleOctaveChange = useCallback((offset) => {
     setOctaveOffset(offset);
@@ -124,10 +137,11 @@ function SceneRoot() {
   }, []);
 
   // When Looper hits "Add": store as a named loop for the Composer
-  const handleAddSequence = useCallback(({ notes, bpm }) => {
+  // `notes` already carry per-step instrument snapshots from Looper
+  const handleAddSequence = useCallback(({ notes, bpm: loopBpm }) => {
     setLoops((prev) => {
       const id = `Loop ${prev.length + 1}`;
-      const loop = { id, notes: [...notes], bpm };
+      const loop = { id, notes: [...notes], bpm: loopBpm };
       console.log('Added loop:', loop);
       return [...prev, loop];
     });
@@ -138,7 +152,7 @@ function SceneRoot() {
    * when Play/Pause toggles or BPM changes.
    *
    * payload:
-   *   null                => stop
+   *   null                => stop preview loop
    *   { notes, bpm }      => play these 8 steps as a loop
    */
   const handlePatternChange = useCallback(
@@ -148,57 +162,111 @@ function SceneRoot() {
         return;
       }
 
-      const { notes, bpm = 86 } = payload;
+      const { notes, bpm: payloadBpm } = payload;
 
-      // update looper BPM
-      setLoopBpm(bpm);
+      // Ensure global BPM and loop BPM are in sync
+      if (typeof payloadBpm === 'number' && payloadBpm !== bpm) {
+        // This will also update Tone.Transport + useLooperTone via useEffect
+        // but we avoid feedback loops by checking first.
+        // (If Looper is already using global bpm, these will be equal.)
+        // eslint-disable-next-line no-console
+        console.log('Syncing BPM from Looper payload:', payloadBpm);
+        // It's safe to set; React will bail if unchanged.
+        setBpm(payloadBpm);
+      }
 
-      // start / update the loop
+      // Always play using the current global BPM
       playLoop(notes, bpm);
     },
-    [playLoop, stopLoop, setLoopBpm]
+    [bpm, playLoop, stopLoop]
   );
 
-  // Assign a selected loop to a channel (called from Composer)
-  const handleAssignLoopToChannel = useCallback(
-    (channelIndex, loopId) => {
-      setChannels((prev) => {
-        const loopToAdd = loops.find((l) => l.id === loopId);
-        if (!loopToAdd) return prev;
-
-        return prev.map((ch, idx) => {
+  // Place a loopId into a specific channel/slot
+  const handlePlaceLoopAtSlot = useCallback(
+    (channelIndex, slotIndex, loopId) => {
+      setChannels((prev) =>
+        prev.map((ch, idx) => {
           if (idx !== channelIndex) return ch;
-          return {
-            ...ch,
-            loops: [...(ch.loops || []), loopToAdd],
-          };
-        });
-      });
+
+          const loopsArr = [...(ch.loops || [])];
+
+          // Ensure array is long enough
+          if (slotIndex >= loopsArr.length) {
+            loopsArr.length = slotIndex + 1;
+          }
+
+          loopsArr[slotIndex] = { loopId };
+          return { ...ch, loops: loopsArr };
+        })
+      );
     },
-    [loops]
+    []
   );
 
-  // Play / pause the whole composition from Composer
+  // Delete a loop (if any) from a specific channel/slot
+  const handleDeleteBlockAtSlot = useCallback((channelIndex, slotIndex) => {
+    setChannels((prev) =>
+      prev.map((ch, idx) => {
+        if (idx !== channelIndex) return ch;
+
+        const loopsArr = [...(ch.loops || [])];
+        if (slotIndex < loopsArr.length) {
+          loopsArr[slotIndex] = null;
+        }
+        return { ...ch, loops: loopsArr };
+      })
+    );
+  }, []);
+
+  // inside SceneRoot in index.jsx
+
   const handleToggleCompositionPlay = useCallback(() => {
     setIsCompositionPlaying((prev) => {
       const next = !prev;
 
       if (next) {
-        // only start if there is at least one loop in any channel
-        const hasContent = channels.some(
-          (ch) => ch.loops && ch.loops.length > 0
+        // only start if there is at least one non-empty slot anywhere
+        const hasContent = channels.some((ch) =>
+          (ch.loops || []).some((slot) => !!slot)
         );
         if (!hasContent) {
           return prev; // keep as it was, nothing to play
         }
-        playComposition(channels);
+
+        // Resolve loopId references into full loop objects, preserving order
+        const resolvedChannels = channels.map((ch) => {
+          const resolvedLoops = (ch.loops || []).map((slot) => {
+            if (!slot) return null;
+
+            // If slot already contains a full loop object, keep it
+            if (slot.notes && Array.isArray(slot.notes)) {
+              return slot;
+            }
+
+            const loopId = slot.loopId || slot.id;
+            const loopObj = loops.find((l) => l.id === loopId);
+            return loopObj || null;
+          });
+
+          return {
+            ...ch,
+            loops: resolvedLoops,
+          };
+        });
+
+        // 👉 Ensure the transport BPM matches our global BPM
+        Tone.Transport.bpm.value = bpm;
+
+        // 👉 Now pass the SAME bpm into playComposition
+        playComposition(resolvedChannels, bpm);
       } else {
         stopComposition();
       }
 
       return next;
     });
-  }, [channels, playComposition, stopComposition]);
+  }, [bpm, channels, loops, playComposition, stopComposition]);
+
 
   const blockPosition = [0, -0.1, 0];
   const blockRotation = [Math.PI / 2, 0, 0];
@@ -239,10 +307,14 @@ function SceneRoot() {
           onPatternChange={handlePatternChange}
           onAddSequence={handleAddSequence}
           noteEvent={looperNoteEvent}
-          // 🆕 Composer wiring
+          // 🔁 Global BPM into the deck (Looper panel)
+          bpm={bpm}
+          onBpmChange={setBpm}
+          // 🎼 Composer wiring: loops + channels
           composerLoops={loops}
           composerChannels={channels}
-          onAssignLoopToChannel={handleAssignLoopToChannel}
+          onPlaceLoopAtSlot={handlePlaceLoopAtSlot}
+          onDeleteBlockAtSlot={handleDeleteBlockAtSlot}
           isCompositionPlaying={isCompositionPlaying}
           onToggleCompositionPlay={handleToggleCompositionPlay}
         />
