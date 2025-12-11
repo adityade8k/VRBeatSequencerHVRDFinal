@@ -186,7 +186,7 @@ export default function Visualizer({
                       return (
                         <mesh
                           key={stepIdx}
-                          position={[stepX, 0.01, 0.01]}
+                          position={[stepX, 0.01, 0.0001]}
                         >
                           <planeGeometry args={[stepWidth, stepHeight]} />
                           <meshStandardMaterial color={stepColor} />
