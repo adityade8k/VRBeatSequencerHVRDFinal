@@ -50,6 +50,10 @@ const Deck = forwardRef(function Deck(
     onToggleCompositionPlay,
     onComposerViewSlotChange,
     onComposerViewChannelChange,
+
+    // 🔥 NEW: controlled indices from SceneRoot
+    composerSelectedSlotIndex,
+    composerSelectedChannelIndex,
   },
   ref
 ) {
@@ -135,6 +139,9 @@ const Deck = forwardRef(function Deck(
                     onTogglePlay={onToggleCompositionPlay}
                     onViewSlotChange={onComposerViewSlotChange}
                     onViewChannelChange={onComposerViewChannelChange}
+                    // 🔥 Pass controlled indices down
+                    selectedSlotIndex={composerSelectedSlotIndex}
+                    selectedChannelIndex={composerSelectedChannelIndex}
                   />
                 </group>
               ) : null}

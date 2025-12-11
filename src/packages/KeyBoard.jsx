@@ -24,8 +24,8 @@ export default function Keyboard({
 
   // dial layout (to the right of keys)
   dialOffset = [-0.22, -0.005, 0.02],
-  dialMin = -2,
-  dialMax = 2,
+  dialMin = -3,
+  dialMax = 3,
   dialStep = 1,
   dialSensitivity = 1.0,
   dialOptimizeDelta = 0.001,

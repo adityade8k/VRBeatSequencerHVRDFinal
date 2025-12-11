@@ -18,8 +18,8 @@ export function useComposerTone() {
 
   // Create master bus once
   useEffect(() => {
-    const limiter = new Tone.Limiter(-3).toDestination();
-    const masterGain = new Tone.Gain(2).connect(limiter);
+    const limiter = new Tone.Limiter(-1).toDestination();
+    const masterGain = new Tone.Gain(5).connect(limiter);
 
     masterGainRef.current = masterGain;
     limiterRef.current = limiter;

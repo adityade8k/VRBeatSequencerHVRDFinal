@@ -12,6 +12,23 @@ import { useComposerTone } from '../../hooks/useComposerTone';
 import * as Tone from 'tone';
 import Visualizer from '../../packages/Visualizer';
 
+// 🔥 Pre-added instrument presets
+const INITIAL_INSTRUMENTS = [
+  {
+    id: 'Kick',
+    kind: 'kick', // uses MembraneSynth in useComposerTone
+    adsr: {
+      attack: 0.001,
+      decay: 0.08,
+      sustain: 0.0,
+      release: 0.02,
+    },
+    duration: 0.14,
+    gain: 3.0,
+    waveType: 'sine',
+  },
+];
+
 function SceneRoot() {
   const [octaveOffset, setOctaveOffset] = useState(0);
   const [lastNote, setLastNote] = useState(null);
@@ -28,7 +45,8 @@ function SceneRoot() {
     gain: 1,
   });
 
-  const [instruments, setInstruments] = useState([]);
+  // 👇 Start with preset instruments
+  const [instruments, setInstruments] = useState(() => INITIAL_INSTRUMENTS);
   const [waveType, setWaveType] = useState('sine');
 
   // 🔁 All 8-step loops recorded from the Looper
@@ -219,10 +237,16 @@ function SceneRoot() {
     );
   }, []);
 
+  // 🔁 Called on every 8n from useComposerTone
   const handleCompositionStep = useCallback((globalStep) => {
     setPlayheadStep(globalStep);
     const slotIdx = Math.floor(globalStep / 8);
+
+    // Always move the visual needle
     setViewSlotIndex(slotIdx);
+
+    // 🔥 Keep the SLOT DIAL synced during playback
+    setSelectedSlotIndex(slotIdx);
   }, []);
 
   // When user turns the slot dial:
@@ -336,6 +360,9 @@ function SceneRoot() {
           onToggleCompositionPlay={handleToggleCompositionPlay}
           onComposerViewSlotChange={handleViewSlotChange}
           onComposerViewChannelChange={handleViewChannelChange}
+          // 🔥 Controlled indices for Composer dials
+          composerSelectedSlotIndex={selectedSlotIndex}
+          composerSelectedChannelIndex={selectedChannelIndex}
         />
 
         <Visualizer
