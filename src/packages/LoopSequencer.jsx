@@ -29,10 +29,7 @@ export default function LoopSequencer({
   return (
     <group position={position} rotation={rotation} scale={scale}>
       {/* background panel */}
-      <mesh>
-        <planeGeometry args={[panelWidth, panelHeight]} />
-        <meshStandardMaterial color="#facc15" />
-      </mesh>
+      
 
       {/* left: instrument list */}
       <group position={[-0.13, 0, 0.001]}>

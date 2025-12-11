@@ -48,6 +48,8 @@ const Deck = forwardRef(function Deck(
     onDeleteBlockAtSlot,   // (channelIndex, slotIndex) => void
     isCompositionPlaying,
     onToggleCompositionPlay,
+    onComposerViewSlotChange,
+    onComposerViewChannelChange,
   },
   ref
 ) {
@@ -131,6 +133,8 @@ const Deck = forwardRef(function Deck(
                     onDeleteBlockAtSlot={onDeleteBlockAtSlot}
                     isPlaying={isCompositionPlaying}
                     onTogglePlay={onToggleCompositionPlay}
+                    onViewSlotChange={onComposerViewSlotChange}
+                    onViewChannelChange={onComposerViewChannelChange}
                   />
                 </group>
               ) : null}

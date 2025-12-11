@@ -10,6 +10,7 @@ import { useToneJS } from '../../hooks/useToneJS';
 import { useLooperTone } from '../../hooks/useLooperTone';
 import { useComposerTone } from '../../hooks/useComposerTone';
 import * as Tone from 'tone';
+import Visualizer from '../../packages/Visualizer';
 
 function SceneRoot() {
   const [octaveOffset, setOctaveOffset] = useState(0);
@@ -48,6 +49,9 @@ function SceneRoot() {
   // Global play/pause for the composer
   const [isCompositionPlaying, setIsCompositionPlaying] = useState(false);
 
+  const [playheadStep, setPlayheadStep] = useState(0);
+  const [viewSlotIndex, setViewSlotIndex] = useState(0);
+
   // event object used to feed notes into the Looper
   const [looperNoteEvent, setLooperNoteEvent] = useState(null);
 
@@ -63,6 +67,8 @@ function SceneRoot() {
   const { playComposition, stopComposition } = useComposerTone();
 
   const [selectedInstrumentId, setSelectedInstrumentId] = useState(null);
+  const [selectedSlotIndex, setSelectedSlotIndex] = useState(0);
+  const [selectedChannelIndex, setSelectedChannelIndex] = useState(0);
 
   // Keep Tone.Transport + looper engine in sync with global BPM
   useEffect(() => {
@@ -166,12 +172,7 @@ function SceneRoot() {
 
       // Ensure global BPM and loop BPM are in sync
       if (typeof payloadBpm === 'number' && payloadBpm !== bpm) {
-        // This will also update Tone.Transport + useLooperTone via useEffect
-        // but we avoid feedback loops by checking first.
-        // (If Looper is already using global bpm, these will be equal.)
-        // eslint-disable-next-line no-console
         console.log('Syncing BPM from Looper payload:', payloadBpm);
-        // It's safe to set; React will bail if unchanged.
         setBpm(payloadBpm);
       }
 
@@ -218,57 +219,75 @@ function SceneRoot() {
     );
   }, []);
 
-  // inside SceneRoot in index.jsx
+  const handleCompositionStep = useCallback((globalStep) => {
+    setPlayheadStep(globalStep);
+    const slotIdx = Math.floor(globalStep / 8);
+    setViewSlotIndex(slotIdx);
+  }, []);
+
+  // When user turns the slot dial:
+  const handleViewSlotChange = useCallback(
+    (slotIdx) => {
+      setSelectedSlotIndex(slotIdx);
+      // When not playing, also center the needle on that slot
+      if (!isCompositionPlaying) {
+        setViewSlotIndex(slotIdx);
+      }
+    },
+    [isCompositionPlaying]
+  );
+
+  // When user turns the channel dial:
+  const handleViewChannelChange = useCallback((channelIdx) => {
+    setSelectedChannelIndex(channelIdx);
+  }, []);
 
   const handleToggleCompositionPlay = useCallback(() => {
     setIsCompositionPlaying((prev) => {
       const next = !prev;
 
       if (next) {
-        // only start if there is at least one non-empty slot anywhere
         const hasContent = channels.some((ch) =>
           (ch.loops || []).some((slot) => !!slot)
         );
         if (!hasContent) {
-          return prev; // keep as it was, nothing to play
+          return prev;
         }
 
-        // Resolve loopId references into full loop objects, preserving order
         const resolvedChannels = channels.map((ch) => {
           const resolvedLoops = (ch.loops || []).map((slot) => {
             if (!slot) return null;
-
-            // If slot already contains a full loop object, keep it
             if (slot.notes && Array.isArray(slot.notes)) {
               return slot;
             }
-
             const loopId = slot.loopId || slot.id;
             const loopObj = loops.find((l) => l.id === loopId);
             return loopObj || null;
           });
-
-          return {
-            ...ch,
-            loops: resolvedLoops,
-          };
+          return { ...ch, loops: resolvedLoops };
         });
 
-        // 👉 Ensure the transport BPM matches our global BPM
         Tone.Transport.bpm.value = bpm;
 
-        // 👉 Now pass the SAME bpm into playComposition
-        playComposition(resolvedChannels, bpm);
+        playComposition(resolvedChannels, bpm, {
+          onStep: handleCompositionStep,
+        });
       } else {
         stopComposition();
       }
 
       return next;
     });
-  }, [bpm, channels, loops, playComposition, stopComposition]);
+  }, [
+    bpm,
+    channels,
+    loops,
+    playComposition,
+    stopComposition,
+    handleCompositionStep,
+  ]);
 
-
-  const blockPosition = [0, -0.1, 0];
+  const blockPosition = [0, -0.2, -0.5];
   const blockRotation = [Math.PI / 2, 0, 0];
   const blockScale = 1;
 
@@ -290,7 +309,7 @@ function SceneRoot() {
 
         <Deck
           position={[0, -0.015, 0]}
-          rotation={[0.3, 0, 0]}
+          rotation={[0, 0, 0]}
           radius={0.15}
           currentPanel={currentPanel}
           onPrevPanel={handlePrevPanel}
@@ -307,16 +326,29 @@ function SceneRoot() {
           onPatternChange={handlePatternChange}
           onAddSequence={handleAddSequence}
           noteEvent={looperNoteEvent}
-          // 🔁 Global BPM into the deck (Looper panel)
           bpm={bpm}
           onBpmChange={setBpm}
-          // 🎼 Composer wiring: loops + channels
           composerLoops={loops}
           composerChannels={channels}
           onPlaceLoopAtSlot={handlePlaceLoopAtSlot}
           onDeleteBlockAtSlot={handleDeleteBlockAtSlot}
           isCompositionPlaying={isCompositionPlaying}
           onToggleCompositionPlay={handleToggleCompositionPlay}
+          onComposerViewSlotChange={handleViewSlotChange}
+          onComposerViewChannelChange={handleViewChannelChange}
+        />
+
+        <Visualizer
+          position={[0, 0, -0.35]}
+          rotation={[-1.2, 0, 0]}
+          scale={[1, 1, 1]}
+          channels={channels}
+          loops={loops}
+          viewSlotIndex={viewSlotIndex}
+          selectedSlotIndex={selectedSlotIndex}
+          selectedChannelIndex={selectedChannelIndex}
+          isPlaying={isCompositionPlaying}
+          playingStep={playheadStep}
         />
       </group>
     </>

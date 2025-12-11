@@ -12,22 +12,44 @@ export function useComposerTone() {
       : Tone.Transport
   );
 
-  // Reuse the same idea as useLooperTone: build/reuse synths by ADSR + wave type
+  // Master bus: masterGain -> limiter -> destination
+  const masterGainRef = useRef(null);
+  const limiterRef = useRef(null);
+
+  // Create master bus once
+  useEffect(() => {
+    const limiter = new Tone.Limiter(-3).toDestination();
+    const masterGain = new Tone.Gain(2).connect(limiter);
+
+    masterGainRef.current = masterGain;
+    limiterRef.current = limiter;
+
+    return () => {
+      if (masterGain) masterGain.dispose();
+      if (limiter) limiter.dispose();
+    };
+  }, []);
+
+  // Build/reuse synths by ADSR + wave type
   const getSynthForInstrument = useCallback((instrument) => {
     const inst = instrument || {};
     const adsr = inst.adsr || {};
     const waveType = inst.waveType || 'sine';
-    const gainValue =
+
+    // we still read inst.gain, but clamp it aggressively
+    const gainValueRaw =
       typeof inst.gain === 'number' && !Number.isNaN(inst.gain)
         ? inst.gain
         : 0.7;
+    const gainValue = Math.min(gainValueRaw, 0.2); // keep voices quiet
 
     const key = JSON.stringify({
       waveType,
       attack: adsr.attack ?? 0.02,
       decay: adsr.decay ?? 0.2,
       sustain: adsr.sustain ?? 0.8,
-      release: adsr.release ?? 0.3,
+      // cap release so long tails don't stack too much
+      release: Math.min(adsr.release ?? 0.3, 0.3),
       gain: gainValue,
     });
 
@@ -41,11 +63,14 @@ export function useComposerTone() {
         attack: adsr.attack ?? 0.02,
         decay: adsr.decay ?? 0.2,
         sustain: adsr.sustain ?? 0.8,
-        release: adsr.release ?? 0.3,
+        release: Math.min(adsr.release ?? 0.3, 0.3),
       },
     });
 
-    const gain = new Tone.Gain(gainValue).toDestination();
+    const masterGain = masterGainRef.current;
+    const dest = masterGain ?? Tone.Destination;
+
+    const gain = new Tone.Gain(gainValue).connect(dest);
     synth.connect(gain);
 
     synthCacheRef.current.set(key, synth);
@@ -53,47 +78,43 @@ export function useComposerTone() {
   }, []);
 
   /**
-   * channels: [
-   *   { id, loops: [ { id, notes: [...8], bpm }, ... ] },
-   *   ...
-   * ]
-   *
-   * - All channels step in lock-step.
-   * - Each loop is 8 steps.
-   * - If a channel has fewer total steps than the longest one, it's silent
-   *   after its last note.
-   * - After "last note in longest channel" => globalStep wraps to 0 (loop back).
-   *
-   * bpmFromRoot: the GLOBAL bpm from SceneRoot — single source of truth.
+   * playComposition(channels, bpmFromRoot, options?)
+   * - channels: [{ id, loops: [loop or null, ...] }]
+   * - each loop: { notes: [step0, step1, ... step7] }
+   * - options.onStep(globalStep) is called every 8n tick BEFORE we increment.
    */
   const playComposition = useCallback(
-    (channels, bpmFromRoot = 86) => {
+    (channels, bpmFromRoot = 86, options = {}) => {
+      const { onStep } = options || {};
       const transport = transportRef.current;
+
       if (!Array.isArray(channels) || channels.length === 0) return;
 
-      // Stop & dispose any previous loop
+      // Kill any existing loop
       if (loopRef.current) {
         loopRef.current.stop();
         loopRef.current.dispose();
         loopRef.current = null;
       }
 
+      // Hard reset the transport timeline to avoid Tone's "start time" errors
+      transport.stop();
       transport.cancel(0);
 
-      // 👉 IMPORTANT: use the BPM given by SceneRoot, NOT the loops.
       const effectiveBpm =
         typeof bpmFromRoot === 'number' && !Number.isNaN(bpmFromRoot)
           ? bpmFromRoot
           : 86;
 
-      transport.bpm.rampTo(effectiveBpm, 0.01);
+      // No rampTo here; just set the value
+      transport.bpm.value = effectiveBpm;
 
-      // Precompute per-channel metadata & longest channel length in steps
+      // Build simple metadata for each channel
       let longestSteps = 0;
       const channelMeta = channels.map((ch) => {
         const loops = ch?.loops || [];
         const totalLoops = loops.length;
-        const totalSteps = totalLoops * 8; // each loop = 8 steps
+        const totalSteps = totalLoops * 8;
 
         if (totalSteps > longestSteps) {
           longestSteps = totalSteps;
@@ -108,36 +129,44 @@ export function useComposerTone() {
       });
 
       if (longestSteps === 0) {
-        // Nothing to play
         return;
       }
 
       let globalStep = 0;
 
-      loopRef.current = new Tone.Loop((time) => {
-        // For each channel, figure out what note (if any) should play on this step
+      const loop = new Tone.Loop((time) => {
+        // Notify visualizer BEFORE increment
+        if (typeof onStep === 'function') {
+          onStep(globalStep);
+        }
+
         channelMeta.forEach((meta) => {
           const { loops, totalSteps } = meta;
           if (!loops || totalSteps === 0) return;
-
-          // If this channel is "shorter" than the longest, it’s silent
           if (globalStep >= totalSteps) return;
 
           const loopIndex = Math.floor(globalStep / 8);
           const stepIndex = globalStep % 8;
 
-          const loop = loops[loopIndex];
-          if (!loop || !Array.isArray(loop.notes)) return;
+          const loopObj = loops[loopIndex];
+          if (!loopObj || !Array.isArray(loopObj.notes)) return;
 
-          const rawStep = loop.notes[stepIndex];
+          const rawStep = loopObj.notes[stepIndex];
           if (!rawStep) return; // null/undefined => silence
 
           let midi = null;
           let instrument = null;
+          let noteDurationOverride = null;
 
           if (typeof rawStep === 'object') {
             midi = rawStep.midi ?? rawStep.note ?? null;
             instrument = rawStep.instrument || null;
+            if (
+              typeof rawStep.duration === 'number' &&
+              !Number.isNaN(rawStep.duration)
+            ) {
+              noteDurationOverride = rawStep.duration;
+            }
           } else if (typeof rawStep === 'number') {
             midi = rawStep;
           }
@@ -146,18 +175,24 @@ export function useComposerTone() {
 
           const synth = getSynthForInstrument(instrument);
           const freq = Tone.Frequency(midi, 'midi');
-          const durSeconds =
-            instrument && typeof instrument.duration === 'number'
-              ? instrument.duration
-              : 0.14;
 
+          // Priority: per-note duration > instrument.duration > fallback
+          const durSeconds =
+            noteDurationOverride ??
+            (instrument && typeof instrument.duration === 'number'
+              ? instrument.duration
+              : 0.14);
+
+          // Use the callback-provided time (monotonic) to avoid timing errors.
           synth.triggerAttackRelease(freq, durSeconds, time);
         });
 
-        // 🔁 Loop back after the last step of the longest channel
+        // Advance global step, looping at longestSteps
         globalStep = (globalStep + 1) % longestSteps;
-      }, '8n').start(0);
+      }, '8n');
 
+      loopRef.current = loop;
+      loopRef.current.start(0);
       transport.start();
     },
     [getSynthForInstrument]
@@ -171,6 +206,7 @@ export function useComposerTone() {
       loopRef.current.dispose();
       loopRef.current = null;
     }
+
     transport.stop();
   }, []);
 

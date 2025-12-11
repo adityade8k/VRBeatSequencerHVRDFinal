@@ -6,7 +6,6 @@ import Dial from '../components/Dial';
 
 /**
  * Try to read the loop stored at (channelIndex, slotIndex).
- * We support a few possible shapes: channel.slots, channel.blocks, channel.loops.
  */
 function getSlotLoop(channels, channelIndex, slotIndex) {
   const ch = channels[channelIndex];
@@ -26,13 +25,17 @@ export default function Composer({
   rotation = [Math.PI / 2, 0, 0],
   scale = [1.2, 1.2, 1.2],
 
-  loops = [],          // [{ id, ... }]
-  channels = [],       // [{ id, slots / blocks / loops: [...] }, ...]
-  onPlaceLoopAtSlot,   // (channelIndex, slotIndex, loopId) => void
-  onDeleteBlockAtSlot, // (channelIndex, slotIndex) => void
+  loops = [],
+  channels = [],
+  onPlaceLoopAtSlot,
+  onDeleteBlockAtSlot,
 
   isPlaying = false,
-  onTogglePlay,        // () => void
+  onTogglePlay,
+
+  // Notify SceneRoot which slot & channel are currently selected
+  onViewSlotChange,
+  onViewChannelChange,
 }) {
   const [selectedLoopId, setSelectedLoopId] = useState(null);
 
@@ -41,11 +44,9 @@ export default function Composer({
     [loops, selectedLoopId]
   );
 
-  // How many channels and slots can we address?
   const channelCount = Math.max(channels.length, 1);
   const maxChannelIndex = channelCount - 1;
 
-  // Infer max slots from channels; fall back to 16 if empty
   const inferredMaxSlots = channels.reduce((max, ch) => {
     const slotsArr = ch?.slots || ch?.blocks || ch?.loops;
     if (Array.isArray(slotsArr)) {
@@ -71,29 +72,34 @@ export default function Composer({
     const idx = Math.round(value);
     const clamped = Math.min(Math.max(idx, 0), maxChannelIndex);
     setSelectedChannelIndex(clamped);
+    if (typeof onViewChannelChange === 'function') {
+      onViewChannelChange(clamped);
+    }
   };
 
   const handleSlotDialChange = (value) => {
     const idx = Math.round(value);
     const clamped = Math.min(Math.max(idx, 0), maxSlotIndex);
     setSelectedSlotIndex(clamped);
+    if (typeof onViewSlotChange === 'function') {
+      onViewSlotChange(clamped);
+    }
   };
 
   const handlePlaceLoopFromList = (loop) => {
     setSelectedLoopId(loop.id);
 
     if (typeof onPlaceLoopAtSlot === 'function') {
-      onPlaceLoopAtSlot(
-        selectedChannelIndex,
-        selectedSlotIndex,
-        loop.id
-      );
+      onPlaceLoopAtSlot(selectedChannelIndex, selectedSlotIndex, loop.id);
     }
 
-    // Increment slot, wrap around
     const next = selectedSlotIndex + 1;
     const wrapped = next > maxSlotIndex ? 0 : next;
     setSelectedSlotIndex(wrapped);
+
+    if (typeof onViewSlotChange === 'function') {
+      onViewSlotChange(wrapped);
+    }
   };
 
   const handleDeleteAtSelection = () => {
@@ -104,27 +110,6 @@ export default function Composer({
 
   return (
     <group position={position} rotation={rotation} scale={scale}>
-      {/* background panel */}
-      <mesh>
-        <planeGeometry args={[panelWidth, panelHeight]} />
-        <meshStandardMaterial color="#38bdf8" />
-      </mesh>
-
-      {/* Title */}
-      <BitmapText
-        text="COMPOSER"
-        position={[-0.16, 0.002, -0.05]}
-        rotation={[Math.PI / 2, 0, 0]}
-        scale={[0.012, 0.012, 0.012]}
-        color="#000000"
-        align="left"
-        anchorY="middle"
-        maxWidth={panelWidth / 0.012}
-        quadWidth={1}
-        quadHeight={1}
-        letterSpacing={-0.3}
-      />
-
       {/* Left: Loops list */}
       <group position={[-0.13, 0, 0.001]}>
         <BitmapText
@@ -176,42 +161,10 @@ export default function Composer({
             })
           )}
         </group>
-
-        {/* Small label with selected loop info */}
-        {selectedLoop && (
-          <BitmapText
-            text={`Last: ${selectedLoop.id}`}
-            position={[-0.07, 0.002, 0.045]}
-            rotation={[Math.PI / 2, 0, 0]}
-            scale={[0.007, 0.007, 0.007]}
-            color="#000000"
-            align="left"
-            anchorY="middle"
-            maxWidth={0.18 / 0.007}
-            quadWidth={1}
-            quadHeight={1}
-            letterSpacing={-0.2}
-          />
-        )}
       </group>
 
       {/* Right: Channel/Slot dials + Play/Delete */}
       <group position={[0.09, 0, 0.001]}>
-        <BitmapText
-          text="CHANNEL / SLOT"
-          position={[-0.07, 0.002, -0.04]}
-          rotation={[Math.PI / 2, 0, 0]}
-          scale={[0.009, 0.009, 0.009]}
-          color="#000000"
-          align="left"
-          anchorY="middle"
-          maxWidth={0.18 / 0.009}
-          quadWidth={1}
-          quadHeight={1}
-          letterSpacing={-0.2}
-        />
-
-        {/* Dials */}
         <group position={[0, 0.001, -0.015]}>
           {/* Channel Dial */}
           <group position={[-0.06, 0, 0]}>
@@ -268,13 +221,8 @@ export default function Composer({
           </group>
         </group>
 
-        {/* Occupancy label */}
         <BitmapText
-          text={
-            currentSlotLoop
-              ? 'Has loop'
-              : 'Empty'
-          }
+          text={currentSlotLoop ? 'Has loop' : 'Empty'}
           position={[-0.07, 0.002, 0.02]}
           rotation={[Math.PI / 2, 0, 0]}
           scale={[0.007, 0.007, 0.007]}
@@ -287,7 +235,6 @@ export default function Composer({
           letterSpacing={-0.2}
         />
 
-        {/* Play / Delete */}
         <group position={[0.03, 0.001, 0.045]}>
           <Button
             position={[-0.04, 0, 0]}
