@@ -311,7 +311,7 @@ function SceneRoot() {
     handleCompositionStep,
   ]);
 
-  const blockPosition = [0, 0, -0.5];
+  const blockPosition = [0, -0.5, -0.5];
   const blockRotation = [-Math.PI/2, 0, 0];
   const blockScale = 1;
 
@@ -333,7 +333,7 @@ function SceneRoot() {
 
         <Deck
           position={[0, -0.02, 0]}
-          rotation={[0, 0, 0]}
+          rotation={[0.4, 0, 0]}
           radius={0.14}
           currentPanel={currentPanel}
           onPrevPanel={handlePrevPanel}
@@ -366,7 +366,7 @@ function SceneRoot() {
         />
 
         <Visualizer
-          position={[0, 0.24, -0.5]}
+          position={[0, 0.23, -0.3]}
           rotation={[0, 0, 0]}
           scale={[1.5, 1.5, 1.5]}
           channels={channels}
@@ -384,7 +384,7 @@ function SceneRoot() {
 
 export default function SceneCanvas() {
   return (
-    <Canvas camera={{ position: [0, 0, 0], fov: 60 }}>
+    <Canvas camera={{ position: [0, 0, 0.6], fov: 60 }}>
       <BitmapTextProvider
         fontFamily='"futura-100", sans-serif'
         useMipmaps={false}
